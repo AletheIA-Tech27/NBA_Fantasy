@@ -2,8 +2,12 @@
 
 import { useState } from 'react';
 
+const BASE = 'https://cdn.nba.com/headshots/nba/latest';
+
 // Foto del jugador desde el CDN de la NBA, usando su player_id.
-// Si la foto no existe o falla, muestra un círculo con sus iniciales.
+// El navegador elige entre dos tamaños según el tamaño en pantalla y la densidad
+// de la pantalla (así las fotos grandes salen nítidas y las chicas no gastan datos).
+// Si falla la versión grande se usa la chica, y si esa también falla, las iniciales.
 export function PlayerPhoto({
   playerId,
   name,
@@ -13,7 +17,9 @@ export function PlayerPhoto({
   name: string;
   size?: number;
 }) {
-  const [failed, setFailed] = useState(false);
+  // 0 = ambos tamaños, 1 = solo el chico, 2 = iniciales
+  const [stage, setStage] = useState<0 | 1 | 2>(0);
+  const fail = () => setStage((s) => (s === 0 ? 1 : 2));
 
   const initials = name
     .split(/\s+/)
@@ -25,7 +31,7 @@ export function PlayerPhoto({
 
   const box = { width: size, height: size };
 
-  if (failed) {
+  if (stage === 2) {
     return (
       <span
         style={{ ...box, fontSize: Math.max(10, Math.round(size / 3)) }}
@@ -37,18 +43,25 @@ export function PlayerPhoto({
     );
   }
 
+  const small = `${BASE}/260x190/${playerId}.png`;
+  const large = `${BASE}/1040x760/${playerId}.png`;
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      key={stage}
       ref={(img: HTMLImageElement | null) => {
         // Si el error ocurrió antes de que React activara el componente, lo detectamos aquí
-        if (img && img.complete && img.naturalWidth === 0) setFailed(true);
+        if (img && img.complete && img.naturalWidth === 0) fail();
       }}
-      src={`https://cdn.nba.com/headshots/nba/latest/260x190/${playerId}.png`}
+      src={small}
+      srcSet={stage === 0 ? `${small} 260w, ${large} 1040w` : undefined}
+      sizes={stage === 0 ? `${size * 2}px` : undefined}
       alt=""
       loading="lazy"
+      decoding="async"
       style={box}
-      onError={() => setFailed(true)}
+      onError={fail}
       className="shrink-0 rounded-full bg-zinc-200 object-cover object-top dark:bg-zinc-700"
     />
   );
