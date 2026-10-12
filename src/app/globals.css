@@ -1,26 +1,34 @@
 @import "tailwindcss";
 
+/* Las páginas viejas usan clases dark:; con esta línea siempre se aplican (el sitio es siempre oscuro) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
+/* Paleta y tipografía de la liga: para cambiar el estilo, edita estos valores */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-court: #0a0c12;
+  --color-surface: #121826;
+  --color-surface-2: #1b2438;
+  --color-line: #252f47;
+  --color-ink: #e9edf7;
+  --color-muted: #8f9bb8;
+  --color-brand: #ff6b1a;
+  --color-gold: #f5c542;
+  --color-silver: #c3cad8;
+  --color-bronze: #d08a4a;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-barlow-condensed), "Arial Narrow", Arial, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #0a0c12;
+  background-image: radial-gradient(900px 320px at 50% -120px, rgba(255, 107, 26, 0.14), transparent);
+  background-repeat: no-repeat;
+  color: #e9edf7;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

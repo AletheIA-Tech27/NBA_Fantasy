@@ -35,31 +35,36 @@ export async function Announcements() {
   const items = data as Announcement[];
 
   return (
-    <section className="mb-6">
-      <div className="flex items-baseline justify-between mb-2">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Anuncios</h2>
-        <Link href="/anuncios" className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
+    <section className="mb-8">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="font-display text-2xl font-extrabold uppercase tracking-wide text-ink">
+          Anuncios
+        </h2>
+        <Link href="/anuncios" className="text-sm font-medium text-brand hover:underline">
           Ver todos
         </Link>
       </div>
       <div className="space-y-2">
         {items.map((a) => (
-          <div key={a.id} className="rounded-lg bg-white dark:bg-zinc-900 p-3">
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.title}</p>
-              {a.pinned && (
-                <span className="text-xs rounded bg-zinc-200 dark:bg-zinc-700 px-1.5 py-0.5 text-zinc-700 dark:text-zinc-200">
-                  Fijado
-                </span>
-              )}
-              <span className="ml-auto text-xs text-zinc-500 dark:text-zinc-400">
-                {formatDate(a.created_at)}
-              </span>
+          <div
+            key={a.id}
+            className={`rounded-xl border border-line bg-surface p-3 ${
+              a.pinned ? 'border-l-4 border-l-brand' : ''
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="break-words font-semibold text-ink">{a.title}</p>
+              <div className="flex shrink-0 items-center gap-2">
+                {a.pinned && (
+                  <span className="rounded bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand">
+                    Fijado
+                  </span>
+                )}
+                <span className="text-xs text-muted">{formatDate(a.created_at)}</span>
+              </div>
             </div>
             {a.body && (
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-line">
-                {a.body}
-              </p>
+              <p className="mt-1 whitespace-pre-line break-words text-sm text-muted">{a.body}</p>
             )}
           </div>
         ))}
