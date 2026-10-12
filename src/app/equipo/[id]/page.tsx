@@ -1,143 +1,109 @@
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Standing, TeamPlayerPoints, FantasyTeam } from '@/lib/types';
+import { PlayerStatsTable, PlayerStatsRow } from '@/components/PlayerStatsTable';
 
 export const revalidate = 300;
 
+type TeamRow = { id: number; name: string; owner: string | null };
+type StatsRow = PlayerStatsRow & { is_current: boolean };
+
+const fmt1 = (v: number) =>
+  v.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+const COLUMNS =
+  'player_id, name, is_current, games, total_points, sum_pts, sum_reb, sum_ast, sum_stl, sum_blk, sum_tov, sum_fg3m';
+
 export default async function EquipoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
-  // Validar que id sea numérico
+  if (!/^\d+$/.test(id)) notFound();
   const teamId = Number(id);
-  if (Number.isNaN(teamId)) {
-    notFound();
-  }
 
-  let team: FantasyTeam | null = null;
-  let standing: Standing | null = null;
-  let currentPlayers: TeamPlayerPoints[] = [];
-  let exPlayers: TeamPlayerPoints[] = [];
-  let error = null;
+  let team: TeamRow | null = null;
+  let total = 0;
+  let players: StatsRow[] = [];
+  let failed = false;
 
   try {
-    // Obtener datos del equipo
-    const { data: teamData, error: teamError } = await supabase
+    const { data: t, error: te } = await supabase
       .from('fantasy_teams')
-      .select('*')
+      .select('id, name, owner')
       .eq('id', teamId)
-      .single();
+      .maybeSingle();
+    if (te) throw te;
+    team = t;
 
-    if (teamError && teamError.code !== 'PGRST116') throw teamError;
-    team = teamData;
+    if (team) {
+      const { data: s, error: se } = await supabase
+        .from('standings')
+        .select('total_points')
+        .eq('id', teamId)
+        .maybeSingle();
+      if (se) throw se;
+      total = Number(s?.total_points ?? 0);
 
-    // Obtener total de puntos del standing
-    const { data: standingData, error: standingError } = await supabase
-      .from('standings')
-      .select('*')
-      .eq('id', teamId)
-      .single();
-
-    if (standingError) throw standingError;
-    standing = standingData;
-
-    // Obtener jugadores actuales
-    const { data: currentData, error: currentError } = await supabase
-      .from('team_player_points')
-      .select('*')
-      .eq('team_id', teamId)
-      .eq('is_current', true)
-      .order('total_points', { ascending: false });
-
-    if (currentError) throw currentError;
-    currentPlayers = currentData || [];
-
-    // Obtener ex-jugadores
-    const { data: exData, error: exError } = await supabase
-      .from('team_player_points')
-      .select('*')
-      .eq('team_id', teamId)
-      .eq('is_current', false)
-      .order('total_points', { ascending: false });
-
-    if (exError) throw exError;
-    exPlayers = exData || [];
-  } catch (err) {
-    error = err;
+      const { data: p, error: pe } = await supabase
+        .from('team_player_stats')
+        .select(COLUMNS)
+        .eq('team_id', teamId);
+      if (pe) throw pe;
+      players = (p ?? []).sort(
+        (a: StatsRow, b: StatsRow) => Number(b.total_points) - Number(a.total_points)
+      );
+    }
+  } catch {
+    failed = true;
   }
 
-  if (error || !team) {
-    notFound();
+  // Solo es 404 si el equipo realmente no existe; un fallo de consulta no lo es
+  if (!failed && !team) notFound();
+
+  if (failed || !team) {
+    return (
+      <div className="flex flex-col items-center p-4">
+        <p className="w-full max-w-3xl text-zinc-600 dark:text-zinc-400">
+          No se pudo cargar la información del equipo. Intenta de nuevo en unos minutos.
+        </p>
+      </div>
+    );
   }
 
-  const formatNumber = (value: number | string) =>
-    Number(value).toLocaleString('es-MX', {
-      style: 'decimal',
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    });
+  const current = players.filter((p) => p.is_current);
+  const former = players.filter((p) => !p.is_current);
 
   return (
     <div className="flex flex-col items-center min-h-screen p-4 bg-zinc-50 dark:bg-black">
       <div className="w-full max-w-3xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{team.name}</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{team.name}</h1>
+        {team.owner && (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">Dueño: {team.owner}</p>
-          {standing && (
-            <p className="text-lg font-medium text-zinc-700 dark:text-zinc-300">
-              Puntuación total: {formatNumber(standing.total_points)}
-            </p>
-          )}
-        </div>
+        )}
+        <p className="text-lg text-zinc-900 dark:text-zinc-100 mb-6">
+          Puntuación total: {fmt1(total)}
+        </p>
 
-        {/* Jugadores actuales */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-3 text-zinc-900 dark:text-zinc-100">
-            Plantilla actual
-          </h2>
-          {currentPlayers.length === 0 ? (
-            <p className="text-zinc-600 dark:text-zinc-400 text-sm">No hay jugadores en plantilla</p>
-          ) : (
-            <div className="bg-white dark:bg-zinc-900 rounded-lg shadow overflow-hidden">
-              {currentPlayers.map((player) => (
-                <div key={player.player_id} className="flex justify-between items-center p-3 border-b border-zinc-200 dark:border-zinc-800 last:border-b-0">
-                  <div>
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{player.name}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {player.games} partidos
-                    </p>
-                  </div>
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                    {formatNumber(player.total_points)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <h2 className="text-lg font-semibold mb-3 text-zinc-900 dark:text-zinc-100">
+          Plantilla actual
+        </h2>
+        {current.length === 0 ? (
+          <p className="text-zinc-600 dark:text-zinc-400 mb-2">Este equipo no tiene jugadores.</p>
+        ) : (
+          <PlayerStatsTable players={current} />
+        )}
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 mb-8">
+          Estadísticas por partido, solo con los partidos jugados mientras estuvo en este equipo.
+        </p>
 
-        {/* Ex-jugadores */}
-        {exPlayers.length > 0 && (
-          <div>
+        {former.length > 0 && (
+          <>
             <h2 className="text-lg font-semibold mb-3 text-zinc-900 dark:text-zinc-100">
               Ex-jugadores (puntos que aportaron mientras estuvieron en el equipo)
             </h2>
-            <div className="bg-white dark:bg-zinc-900 rounded-lg shadow overflow-hidden">
-              {exPlayers.map((player) => (
-                <div key={player.player_id} className="flex justify-between items-center p-3 border-b border-zinc-200 dark:border-zinc-800 last:border-b-0">
-                  <div>
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{player.name}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {player.games} partidos
-                    </p>
-                  </div>
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                    {formatNumber(player.total_points)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+            <PlayerStatsTable players={former} />
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+              Estadísticas por partido, solo con los partidos jugados mientras estuvo en este equipo.
+            </p>
+          </>
+                )}
       </div>
     </div>
   );

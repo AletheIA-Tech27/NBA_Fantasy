@@ -1,6 +1,7 @@
 ﻿import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Standing, BoxScore } from '@/lib/types';
+import { Announcements } from '@/components/Announcements';
 
 export const revalidate = 300;
 
@@ -53,6 +54,8 @@ export default async function Home() {
   return (
     <div className="flex flex-col items-center min-h-screen p-4 bg-zinc-50 dark:bg-black">
       <div className="w-full max-w-3xl">
+        <Announcements />
+
         <div className="mb-4">
           {latestGameDate ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
