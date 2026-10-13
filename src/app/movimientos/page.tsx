@@ -1,65 +1,91 @@
 import { supabase } from '@/lib/supabase';
-import { Transaction } from '@/lib/types';
 
-export const revalidate = 300;
+export const revalidate = 60;
+
+type TransactionRow = {
+  id: number;
+  kind: string;
+  effective_date: string;
+  description: string;
+};
+
+const formatDate = (dateStr: string) => dateStr.split('-').reverse().join('/');
+
+// Cada tipo de movimiento tiene su color
+const KINDS: Record<string, { label: string; border: string; badge: string }> = {
+  free_agent: {
+    label: 'Agente libre',
+    border: 'border-l-brand',
+    badge: 'bg-brand/15 text-brand',
+  },
+  trade: {
+    label: 'Trade',
+    border: 'border-l-sky-400',
+    badge: 'bg-sky-400/15 text-sky-300',
+  },
+};
+const FALLBACK = {
+  label: 'Movimiento',
+  border: 'border-l-muted',
+  badge: 'bg-surface-2 text-muted',
+};
 
 export default async function MovimientosPage() {
-  let transactions: Transaction[] = [];
-  let error = null;
+  let transactions: TransactionRow[] = [];
+  let failed = false;
 
   try {
-    const { data, error: supabaseError } = await supabase
+    const { data, error } = await supabase
       .from('transactions')
-      .select('*')
+      .select('id, kind, effective_date, description')
       .order('id', { ascending: false })
       .limit(200);
-
-    if (supabaseError) throw supabaseError;
-    transactions = data || [];
-  } catch (err) {
-    error = err;
+    if (error) throw error;
+    transactions = data ?? [];
+  } catch {
+    failed = true;
   }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-zinc-50 dark:bg-black">
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Error al cargar los movimientos. Por favor, intenta más tarde.
-        </p>
-      </div>
-    );
-  }
-
-  const formatDate = (dateStr: string) => dateStr.split('-').reverse().join('/');
-
-  const formatKind = (kind: string) => (kind === 'free_agent' ? 'Agente libre' : 'Trade');
 
   return (
-    <div className="flex flex-col items-center min-h-screen p-4 bg-zinc-50 dark:bg-black">
-      <div className="w-full max-w-3xl">
-        <h1 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-100">Movimientos</h1>
-        {transactions.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400">Aún no hay movimientos</p>
-        ) : (
-          <div className="space-y-3">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="rounded-lg bg-white p-3 shadow sm:p-4 dark:bg-zinc-900">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+    <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      <h1 className="font-display text-3xl font-extrabold uppercase tracking-wide text-ink">
+        Movimientos
+      </h1>
+      <p className="mb-4 text-sm text-muted">Fichajes e intercambios de la liga, del más reciente al más antiguo.</p>
+
+      {failed ? (
+        <p className="rounded-xl border border-line bg-surface p-4 text-muted">
+          Error al cargar los movimientos. Por favor, intenta más tarde.
+        </p>
+      ) : transactions.length === 0 ? (
+        <p className="rounded-xl border border-line bg-surface p-4 text-muted">
+          Aún no hay movimientos
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {transactions.map((tx) => {
+            const kind = KINDS[tx.kind] ?? FALLBACK;
+            return (
+              <div
+                key={tx.id}
+                className={`rounded-xl border border-l-4 border-line bg-surface p-3 sm:p-4 ${kind.border}`}
+              >
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="font-display text-lg font-bold leading-none text-ink">
                     {formatDate(tx.effective_date)}
                   </span>
-                  <span className="shrink-0 rounded bg-zinc-200 px-2 py-1 text-xs text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                    {formatKind(tx.kind)}
+                  <span
+                    className={`shrink-0 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${kind.badge}`}
+                  >
+                    {kind.label}
                   </span>
                 </div>
-                <p className="break-words text-sm text-zinc-700 sm:text-base dark:text-zinc-300">
-                  {tx.description}
-                </p>
+                <p className="break-words text-sm text-muted sm:text-base">{tx.description}</p>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

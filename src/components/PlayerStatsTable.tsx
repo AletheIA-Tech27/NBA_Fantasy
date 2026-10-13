@@ -23,47 +23,52 @@ const fmt1 = (v: number) =>
 const avg = (sum: number | string | null, games: number) =>
   games > 0 ? fmt1(n(sum) / games) : '—';
 
-const th = 'px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 uppercase whitespace-nowrap';
-const td = 'px-3 py-2 text-sm text-zinc-800 dark:text-zinc-200 text-right whitespace-nowrap';
+const th =
+  'px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap';
+const td = 'px-3 py-2.5 text-right text-sm tabular-nums text-ink/90 whitespace-nowrap';
 
 export function PlayerStatsTable({ players }: { players: PlayerStatsRow[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+    <div className="overflow-x-auto rounded-xl border border-line bg-surface">
       <table className="w-full min-w-[640px]">
         <thead>
-          <tr className="bg-zinc-100 dark:bg-zinc-800">
-            <th className={`${th} text-left sticky left-0 bg-zinc-100 dark:bg-zinc-800`}>Jugador</th>
-            <th className={`${th} text-right`}>PJ</th>
-            <th className={`${th} text-right`}>FANT</th>
-            <th className={`${th} text-right`}>FANT/PJ</th>
-            <th className={`${th} text-right`}>PTS</th>
-            <th className={`${th} text-right`}>REB</th>
-            <th className={`${th} text-right`}>AST</th>
-            <th className={`${th} text-right`}>STL</th>
-            <th className={`${th} text-right`}>BLK</th>
-            <th className={`${th} text-right`}>TOV</th>
-            <th className={`${th} text-right`}>3PM</th>
+          <tr className="bg-surface-2">
+            <th className="sticky left-0 bg-surface-2 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Jugador
+            </th>
+            <th className={th}>PJ</th>
+            <th className={th}>FANT</th>
+            <th className={th}>FANT/PJ</th>
+            <th className={th}>PTS</th>
+            <th className={th}>REB</th>
+            <th className={th}>AST</th>
+            <th className={th}>STL</th>
+            <th className={th}>BLK</th>
+            <th className={th}>TOV</th>
+            <th className={th}>3PM</th>
           </tr>
         </thead>
         <tbody>
           {players.map((p) => {
             const games = n(p.games);
             return (
-              <tr key={p.player_id} className="border-t border-zinc-200 dark:border-zinc-800">
-                <td className="px-3 py-2 text-sm text-left whitespace-nowrap sticky left-0 bg-white dark:bg-zinc-900">
-                  <div className="flex items-center gap-2">
-                    <PlayerPhoto playerId={p.player_id} name={p.name} size={28} />
+              <tr key={p.player_id} className="border-t border-line">
+                <td className="sticky left-0 whitespace-nowrap bg-surface px-3 py-2 text-left shadow-[4px_0_6px_-4px_rgba(0,0,0,0.7)]">
+                  <div className="flex items-center gap-2.5">
+                    <PlayerPhoto playerId={p.player_id} name={p.name} size={32} />
                     <Link
                       href={`/jugador/${p.player_id}`}
-                      className="text-zinc-900 hover:underline dark:text-zinc-100"
+                      className="text-sm font-semibold text-ink hover:text-brand"
                     >
                       {p.name}
                     </Link>
                   </div>
                 </td>
                 <td className={td}>{games}</td>
-                <td className={td}>{fmt1(n(p.total_points))}</td>
-                <td className={td}>{avg(p.total_points, games)}</td>
+                <td className={`${td} font-display text-lg font-bold text-ink`}>
+                  {fmt1(n(p.total_points))}
+                </td>
+                <td className={`${td} font-semibold text-brand`}>{avg(p.total_points, games)}</td>
                 <td className={td}>{avg(p.sum_pts, games)}</td>
                 <td className={td}>{avg(p.sum_reb, games)}</td>
                 <td className={td}>{avg(p.sum_ast, games)}</td>

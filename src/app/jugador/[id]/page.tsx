@@ -1,9 +1,10 @@
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PlayerPhoto } from '@/components/PlayerPhoto';
+import { TeamCrest } from '@/components/TeamCrest';
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 type PlayerRow = { player_id: number; name: string };
 type TeamRow = { id: number; name: string };
@@ -28,6 +29,25 @@ const fmt1 = (v: number) =>
   v.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const fmt0 = (v: number) => v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
 const formatDate = (s: string) => s.split('-').reverse().join('/');
+
+const th =
+  'px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap';
+const td = 'px-3 py-2.5 text-right text-sm tabular-nums text-ink/90 whitespace-nowrap';
+
+function Box({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-2 py-3 text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</p>
+      <p
+        className={`mt-0.5 font-display text-3xl font-extrabold leading-none ${
+          accent ? 'text-brand' : 'text-ink'
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
 
 export default async function JugadorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -83,8 +103,8 @@ export default async function JugadorPage({ params }: { params: Promise<{ id: st
 
   if (failed || !player) {
     return (
-      <div className="flex flex-col items-center p-4">
-        <p className="w-full max-w-3xl text-zinc-600 dark:text-zinc-400">
+      <div className="mx-auto w-full max-w-3xl px-4 py-10">
+        <p className="rounded-xl border border-line bg-surface p-4 text-muted">
           No se pudo cargar la información del jugador. Intenta de nuevo en unos minutos.
         </p>
       </div>
@@ -95,9 +115,9 @@ export default async function JugadorPage({ params }: { params: Promise<{ id: st
   const sum = (key: keyof GameLog) => logs.reduce((acc, l) => acc + num(l[key] as Val), 0);
   const avg = (key: keyof GameLog) => (games > 0 ? sum(key) / games : 0);
   const totalFantasy = sum('fantasy_points');
+  const bestGame = games > 0 ? Math.max(...logs.map((l) => num(l.fantasy_points))) : 0;
 
   const averages: [string, string][] = [
-    ['FANT', fmt1(avg('fantasy_points'))],
     ['MIN', fmt1(avg('min'))],
     ['PTS', fmt1(avg('pts'))],
     ['REB', fmt1(avg('reb'))],
@@ -108,105 +128,136 @@ export default async function JugadorPage({ params }: { params: Promise<{ id: st
     ['3PM', fmt1(avg('fg3m'))],
   ];
 
-  const th = 'px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 uppercase';
-  const td = 'px-3 py-2 text-sm text-zinc-800 dark:text-zinc-200';
-
   return (
-    <div className="flex flex-col items-center min-h-screen p-4 bg-zinc-50 dark:bg-black">
-      <div className="w-full max-w-3xl">
-        <div className="mb-6 flex items-center gap-4">
-          <PlayerPhoto playerId={player.player_id} name={player.name} size={72} />
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{player.name}</h1>
+    <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      {team ? (
+        <Link href={`/equipo/${team.id}`} className="text-sm font-medium text-muted hover:text-brand">
+          ← {team.name}
+        </Link>
+      ) : (
+        <Link href="/agentes-libres" className="text-sm font-medium text-muted hover:text-brand">
+          ← Agentes libres
+        </Link>
+      )}
+
+      {/* Encabezado */}
+      <div className="mb-5 mt-3 overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-brand/15 via-surface to-surface p-4 sm:p-5">
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 rounded-full p-1 ring-2 ring-brand">
+            <PlayerPhoto playerId={player.player_id} name={player.name} size={96} />
+          </div>
+          <div className="min-w-0">
+            <h1 className="break-words font-display text-3xl font-extrabold uppercase leading-none tracking-wide text-ink sm:text-4xl">
+              {player.name}
+            </h1>
             {team ? (
               <Link
                 href={`/equipo/${team.id}`}
-                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface-2 py-1 pl-1 pr-3 text-sm font-semibold text-ink transition-colors hover:border-brand"
               >
-                Equipo: {team.name}
+                <TeamCrest id={team.id} name={team.name} size={24} />
+                <span className="truncate">{team.name}</span>
               </Link>
             ) : (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">Agente libre</p>
+              <span className="mt-2 inline-block rounded-full border border-line bg-surface-2 px-3 py-1 text-sm text-muted">
+                Agente libre
+              </span>
             )}
           </div>
         </div>
-
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-3 text-zinc-900 dark:text-zinc-100">Resumen</h2>
-          {games === 0 ? (
-            <p className="text-zinc-600 dark:text-zinc-400">Sin partidos registrados</p>
-          ) : (
-            <div className="bg-white dark:bg-zinc-900 rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Partidos jugados</p>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{fmt0(games)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Puntos fantasy totales</p>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{fmt1(totalFantasy)}</p>
-                </div>
-              </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">Promedios por partido</p>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                {averages.map(([label, value]) => (
-                  <div key={label}>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {games > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold mb-3 text-zinc-900 dark:text-zinc-100">
-              Historial de partidos
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] border border-zinc-200 dark:border-zinc-800 rounded-lg">
-                <thead>
-                  <tr className="bg-zinc-100 dark:bg-zinc-800">
-                    <th className={`${th} text-left`}>Fecha</th>
-                    <th className={`${th} text-left`}>Equipo</th>
-                    <th className={`${th} text-right`}>MIN</th>
-                    <th className={`${th} text-right`}>PTS</th>
-                    <th className={`${th} text-right`}>REB</th>
-                    <th className={`${th} text-right`}>AST</th>
-                    <th className={`${th} text-right`}>STL</th>
-                    <th className={`${th} text-right`}>BLK</th>
-                    <th className={`${th} text-right`}>TOV</th>
-                    <th className={`${th} text-right`}>3PM</th>
-                    <th className={`${th} text-right`}>FANT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((l) => (
-                    <tr
-                      key={l.game_id}
-                      className="border-t border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                    >
-                      <td className={td}>{formatDate(l.game_date)}</td>
-                      <td className={td}>{l.team_abbr ?? '—'}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.min))}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.pts))}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.reb))}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.ast))}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.stl))}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.blk))}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.tov))}</td>
-                      <td className={`${td} text-right`}>{fmt0(num(l.fg3m))}</td>
-                      <td className={`${td} text-right`}>{fmt1(num(l.fantasy_points))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
+
+      {games === 0 ? (
+        <p className="rounded-xl border border-line bg-surface p-4 text-muted">
+          Sin partidos registrados
+        </p>
+      ) : (
+        <>
+          {/* Resumen */}
+          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Box label="Partidos" value={fmt0(games)} />
+            <Box label="Fantasy total" value={fmt1(totalFantasy)} />
+            <Box label="Fantasy / PJ" value={fmt1(avg('fantasy_points'))} accent />
+            <Box label="Mejor partido" value={fmt1(bestGame)} />
+          </div>
+
+          <p className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            Promedios por partido
+          </p>
+          <div className="mb-8 grid grid-cols-4 gap-2">
+            {averages.map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-xl border border-line bg-surface px-1 py-2.5 text-center"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  {label}
+                </p>
+                <p className="mt-0.5 font-display text-2xl font-bold leading-none text-ink">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Historial */}
+          <h2 className="mb-3 font-display text-2xl font-extrabold uppercase tracking-wide text-ink">
+            Historial de partidos
+          </h2>
+          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+            <table className="w-full min-w-[560px]">
+              <thead>
+                <tr className="bg-surface-2">
+                  <th className="sticky left-0 bg-surface-2 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    Fecha
+                  </th>
+                  <th className={`${th} text-left`}>Equipo</th>
+                  <th className={th}>MIN</th>
+                  <th className={th}>PTS</th>
+                  <th className={th}>REB</th>
+                  <th className={th}>AST</th>
+                  <th className={th}>STL</th>
+                  <th className={th}>BLK</th>
+                  <th className={th}>TOV</th>
+                  <th className={th}>3PM</th>
+                  <th className={th}>FANT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((l) => {
+                  const fant = num(l.fantasy_points);
+                  return (
+                    <tr key={l.game_id} className="border-t border-line">
+                      <td className="sticky left-0 whitespace-nowrap bg-surface px-3 py-2.5 text-left text-sm text-ink shadow-[4px_0_6px_-4px_rgba(0,0,0,0.7)]">
+                        {formatDate(l.game_date)}
+                      </td>
+                      <td className={`${td} text-left`}>{l.team_abbr ?? '—'}</td>
+                      <td className={td}>{fmt0(num(l.min))}</td>
+                      <td className={td}>{fmt0(num(l.pts))}</td>
+                      <td className={td}>{fmt0(num(l.reb))}</td>
+                      <td className={td}>{fmt0(num(l.ast))}</td>
+                      <td className={td}>{fmt0(num(l.stl))}</td>
+                      <td className={td}>{fmt0(num(l.blk))}</td>
+                      <td className={td}>{fmt0(num(l.tov))}</td>
+                      <td className={td}>{fmt0(num(l.fg3m))}</td>
+                      <td
+                        className={`${td} font-display text-lg font-bold ${
+                          fant === bestGame ? 'text-gold' : 'text-ink'
+                        }`}
+                      >
+                        {fmt1(fant)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            En dorado, su mejor partido en puntos fantasy.
+          </p>
+        </>
+      )}
     </div>
   );
 }

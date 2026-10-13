@@ -35,7 +35,7 @@ export function PlayerPhoto({
     return (
       <span
         style={{ ...box, fontSize: Math.max(10, Math.round(size / 3)) }}
-        className="inline-flex shrink-0 items-center justify-center rounded-full bg-zinc-200 font-medium text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+        className="inline-flex shrink-0 items-center justify-center rounded-full bg-surface-2 font-medium text-muted"
         aria-hidden="true"
       >
         {initials}
@@ -62,7 +62,7 @@ export function PlayerPhoto({
       decoding="async"
       style={box}
       onError={fail}
-      className="shrink-0 rounded-full bg-zinc-200 object-cover object-top dark:bg-zinc-700"
+      className="shrink-0 rounded-full bg-surface-2 object-cover object-top"
     />
   );
 }
