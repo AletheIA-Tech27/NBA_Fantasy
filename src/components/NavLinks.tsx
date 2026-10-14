@@ -5,15 +5,17 @@ import { usePathname } from 'next/navigation';
 
 const links = [
   { href: '/', label: 'Posiciones' },
+  { href: '/jugadores', label: 'Jugadores' },
   { href: '/anuncios', label: 'Anuncios' },
   { href: '/agentes-libres', label: 'Agentes libres' },
   { href: '/movimientos', label: 'Movimientos' },
 ];
 
 function isActive(href: string, pathname: string) {
-  // Las páginas de equipo y de jugador cuelgan de "Posiciones"
-  if (href === '/') {
-    return pathname === '/' || pathname.startsWith('/equipo') || pathname.startsWith('/jugador');
+  // La página de un equipo cuelga de "Posiciones" y la de un jugador, de "Jugadores"
+  if (href === '/') return pathname === '/' || pathname.startsWith('/equipo');
+  if (href === '/jugadores') {
+    return pathname.startsWith('/jugadores') || pathname.startsWith('/jugador/');
   }
   return pathname.startsWith(href);
 }
